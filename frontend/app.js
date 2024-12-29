@@ -25,5 +25,6 @@ if (signupForm) {
         } catch (err) {
             console.error('Signup Error:', err);
         }
+        signupForm.reset();
     });
 }
