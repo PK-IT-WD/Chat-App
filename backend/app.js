@@ -1,11 +1,15 @@
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const cors = require('cors');
 const {Sequelize, DataTypes} = require('sequelize');
 const app = express();
 
 app.use(express.static(path.join(__dirname, '../', 'frontend')));
 app.use(express.json());
+app.use(cors({
+    origin: 'http://localhost:3001'
+}));
 
 const sequelize = new Sequelize('chatApp', 'root', '2001', {
     host: 'localhost',
