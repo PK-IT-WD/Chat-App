@@ -8,7 +8,8 @@ const app = express();
 app.use(express.static(path.join(__dirname, '../', 'frontend')));
 app.use(express.json());
 app.use(cors({
-    origin: 'http://localhost:3001'
+    origin: 'http://localhost:3000',
+    methods: ['POST']
 }));
 
 const sequelize = new Sequelize('chatApp', 'root', '2001', {
@@ -82,5 +83,5 @@ app.post('/signup', async (req, res) => {
 })
 
 app.listen(3000, ()=> {
-    console.log('Server is running on the port 3000');
+    console.log('Server is running on the port 3001');
 });
