@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const {Sequelize, DataTypes} = require('sequelize');
 const app = express();
@@ -78,6 +79,25 @@ app.post('/signup', async (req, res) => {
         }
     } catch (err) {
         console.error('Signup Error:', err);
+        res.status(500).json({success: false, message: 'Server error'});
+    }
+});
+
+app.post('/login', async (req, res) => {
+    const {email, password} = req.body;
+    try {
+        const user = await userDetails.findOne({where: {email: email}});
+        if (!user) {
+            return res.status(404).json({success: false, message: 'User not found'});
+        }
+        const correctPassword = await bcrypt.compare(password, user.password);
+        if (!correctPassword) {
+            return res.status(401).json({success: false, message: 'Invalid credentials'});
+        }
+        const token = jwt.sign({userID: user.id}, 'secretKey', {expiresIn: '1h'});
+        return res.status(200).json({success: true, message: 'User Login successfully', token});
+    } catch (err) {
+        console.error('Login Error:', err);
         res.status(500).json({success: false, message: 'Server error'});
     }
 })
