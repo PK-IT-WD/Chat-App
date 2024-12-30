@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
+
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const {Sequelize, DataTypes} = require('sequelize');
+
 const app = express();
 
 app.use(express.static(path.join(__dirname, '../', 'frontend')));
@@ -47,6 +49,24 @@ const userDetails = sequelize.define('userDetails', {
     }
 });
 
+const messageDetails = sequelize.define('messageDetails', {
+    userID: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: userDetails,
+            key: 'id'
+        }
+    },
+    message: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }
+});
+
+messageDetails.belongsTo(userDetails, {foreignKey: 'userID', as: 'userInfo'});
+userDetails.hasMany(messageDetails, {foreignKey: 'userID', as: 'userInfo'});
+
 sequelize.sync({alter: true})
 .then(() => {
     console.log('Database Table created');
@@ -61,6 +81,7 @@ app.get('/', (req, res) => {
 
 app.post('/signup', async (req, res) => {
     const {userName, email, mobileNumber, password} = req.body
+
     try {
         const available = await userDetails.findOne({where: {email: email, mobileNumber: mobileNumber}});
         if (!available) {
@@ -73,10 +94,10 @@ app.post('/signup', async (req, res) => {
                 mobileNumber: mobileNumber,
                 password: hashPassword
             });
-            res.status(201).json({success: true, message: 'User credentials added successfully'})
-        } else {
-            res.status(409).json({success: false, message: 'User credentials already present'});
+            return res.status(201).json({success: true, message: 'User credentials added successfully'})
         }
+
+        return res.status(409).json({success: false, message: 'User credentials already present'});
     } catch (err) {
         console.error('Signup Error:', err);
         res.status(500).json({success: false, message: 'Server error'});
@@ -85,22 +106,54 @@ app.post('/signup', async (req, res) => {
 
 app.post('/login', async (req, res) => {
     const {email, password} = req.body;
+
     try {
         const user = await userDetails.findOne({where: {email: email}});
         if (!user) {
             return res.status(404).json({success: false, message: 'User not found'});
         }
+
         const correctPassword = await bcrypt.compare(password, user.password);
         if (!correctPassword) {
             return res.status(401).json({success: false, message: 'Invalid credentials'});
         }
+
         const token = jwt.sign({userID: user.id}, 'secretKey', {expiresIn: '1h'});
         return res.status(200).json({success: true, message: 'User Login successfully', token});
     } catch (err) {
         console.error('Login Error:', err);
         res.status(500).json({success: false, message: 'Server error'});
     }
-})
+});
+
+app.post('/message', async (req, res) => {
+    const token = req.headers.authorization;
+    if (!token) return res.status(401).json({success: false, message: 'Token not provided'});
+
+    try {
+        const {message} = req.body;
+        const tokenParts = token.split(' ');
+        const decodedToken = jwt.verify(tokenParts[1], 'secretKey');
+        if (!decodedToken) return res.status(403).json({success: false, message: 'Invalid Token'});
+
+        await messageDetails.create({
+            userID : decodedToken.userID,
+            message: message
+        });
+        const totalMessage = await messageDetails.findAll({
+            include: [{
+                model: userDetails,
+                as: 'userInfo',
+                attributes: ['userName']
+            }]
+        });
+        console.log(JSON.stringify(totalMessage));
+        return res.status(201).json({success: true, storedMessage: totalMessage});
+    } catch (err) {
+        console.log('Message Database Error:', err);
+        res.status(500).json({success: false, message: 'Server error'});
+    }
+});
 
 app.listen(3000, ()=> {
     console.log('Server is running on the port 3001');
