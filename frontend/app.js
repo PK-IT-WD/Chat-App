@@ -97,7 +97,7 @@ if (messageForm) {
             });
 
             const data = await response.json();
-            const message = data.storedMessage
+            const message = data.storedMessage;
             const messageDiv = document.createElement('div');
             const userDetails = message.map(detail => ({
                 userName: detail.userInfo.userName,
