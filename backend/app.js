@@ -140,17 +140,36 @@ app.post('/message', async (req, res) => {
             userID : decodedToken.userID,
             message: message
         });
-        const totalMessage = await messageDetails.findAll({
+        return res.status(201).json({success: true});
+    } catch (err) {
+        console.log('Message Database Error:', err);
+        res.status(500).json({success: false, message: 'Server error'});
+    }
+});
+
+app.get('/allMessage', async (req, res) => {
+    const token = req.headers.authorization;
+    if (!token) return res.status(401).json({success: false, message: 'No token provided'});
+
+    try {
+        const tokenParts = token.split(' ');
+        const decodedToken = jwt.verify(tokenParts[1], 'secretKey');
+        if (!decodedToken) return res.status(403).json({success: false, message: 'Invalid Token'});
+        
+        const allMessage = await messageDetails.findAll({
             include: [{
                 model: userDetails,
                 as: 'userInfo',
                 attributes: ['userName']
             }]
         });
-        console.log(JSON.stringify(totalMessage));
-        return res.status(201).json({success: true, storedMessage: totalMessage});
+        const storedMessage = await allMessage.map(detail => ({
+            userName: detail.userInfo.userName,
+            message: detail.message
+        }));
+        res.status(200).json({success: true, storedMessage: storedMessage});
     } catch (err) {
-        console.log('Message Database Error:', err);
+        console.error('Message Database Error:', err);
         res.status(500).json({success: false, message: 'Server error'});
     }
 });
