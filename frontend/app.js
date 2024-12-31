@@ -7,8 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginMessage = document.getElementById('loginMessage');
     const showMessage = document.getElementById('showMessage');
 
-    await fetchMessage();
-    setInterval(fetchMessage, 5000);
+    let fetchStatus = false;
+    setInterval(async () => {
+        if (!fetchStatus) {
+            fetchStatus = true;
+            await fetchMessage();
+            fetchStatus = false;
+        }
+    }, 5000);
 
     if (signupForm) {
         signupForm.addEventListener('submit', async (event)=> {
