@@ -140,40 +140,24 @@ app.post('/message', async (req, res) => {
             userID : decodedToken.userID,
             message: message
         });
-        return res.status(201).json({success: true});
+        const recentMessage = await messageDetails.findOne({
+            where : {userID: decodedToken.userID},
+            order: [['createdAt', 'DESC']],
+            include: {
+                model: userDetails,
+                as: 'userInfo',
+                attributes: ['userName']
+            }
+        });
+        console.log(recentMessage.userInfo.userName);
+        if (!recentMessage) return res.status(404).json({success: false, message: `No message is present for ${recentMessage.userInfo.userName}`});
+        return res.status(201).json({success: true, recentMessage: recentMessage});
     } catch (err) {
         console.log('Message Database Error:', err);
         res.status(500).json({success: false, message: 'Server error'});
     }
 });
 
-app.get('/allMessage', async (req, res) => {
-    const token = req.headers.authorization;
-    if (!token) return res.status(401).json({success: false, message: 'No token provided'});
-
-    try {
-        const tokenParts = token.split(' ');
-        const decodedToken = jwt.verify(tokenParts[1], 'secretKey');
-        if (!decodedToken) return res.status(403).json({success: false, message: 'Invalid Token'});
-        
-        const allMessage = await messageDetails.findAll({
-            include: [{
-                model: userDetails,
-                as: 'userInfo',
-                attributes: ['userName']
-            }]
-        });
-        const storedMessage = await allMessage.map(detail => ({
-            userName: detail.userInfo.userName,
-            message: detail.message
-        }));
-        res.status(200).json({success: true, storedMessage: storedMessage});
-    } catch (err) {
-        console.error('Message Database Error:', err);
-        res.status(500).json({success: false, message: 'Server error'});
-    }
-});
-
-app.listen(3000, ()=> {
+app.listen(3000, '0.0.0.0', ()=> {
     console.log('Server is running on the port 3000');
 });
